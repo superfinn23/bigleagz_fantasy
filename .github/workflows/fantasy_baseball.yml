@@ -4,35 +4,38 @@ on:
   schedule:
     # Run daily at 9:00 AM UTC (4:00 AM EST)
     - cron: '0 9 * * *'
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch: # Allow manual triggering
 
 jobs:
   update-fantasy-stats:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      
+        
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      
+        
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      
+          export PATH="$HOME/.cargo/bin:$PATH"
+          
       - name: Install dependencies with uv
         run: |
-          uv sync
-          uv pip install -e .
-      
+          # If you have a requirements.txt file:
+          uv pip install -r requirements.txt
+          
+          # Or if you have a pyproject.toml:
+          uv pip install .
+          
       - name: Set up credentials
         run: |
           echo '${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}' > credentials.json
-      
+          
       - name: Run fantasy baseball script
         env:
           GOOGLE_SHEETS_CREDENTIALS_FILE: credentials.json
