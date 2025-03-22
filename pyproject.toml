@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fantasy-baseball"
+version = "0.1.0"
+description = "Fantasy Baseball Automation for Big Leagz"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+dependencies = [
+    "pandas>=1.5.0",
+    "pytz>=2022.5",
+    "MLB-StatsAPI>=1.6.0",
+    "tqdm>=4.64.1",
+    "gspread>=5.7.0",
+    "google-auth>=2.16.2",
+    "google-auth-oauthlib>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.1.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.pytest]
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["fantasy_baseball.py"]
