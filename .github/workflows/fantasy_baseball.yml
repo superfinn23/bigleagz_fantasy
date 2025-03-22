@@ -24,14 +24,16 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           export PATH="$HOME/.cargo/bin:$PATH"
           
-      - name: Install dependencies with uv
+      - name: Create and activate virtual environment
         run: |
-          # If you have a requirements.txt file:
-          uv pip install -r requirements.txt
+          uv venv
+          echo "$(pwd)/.venv/bin" >> $GITHUB_PATH
           
-          # Or if you have a pyproject.toml:
-          uv pip install .
-          
+      - name: Install dependencies with uv
+        run: |    
+          # Or install the package in development mode
+          uv pip install -e . || echo "Could not install package"
+
       - name: Set up credentials
         run: |
           echo '${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}' > credentials.json
