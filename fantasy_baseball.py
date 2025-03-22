@@ -15,6 +15,7 @@ import os
 import logging
 import sys
 import re
+import time
 
 # Set up logging
 logging.basicConfig(
@@ -99,11 +100,11 @@ def get_fantasy_submissions(gc, spreadsheet_id):
         
         # Convert to DataFrame - use all columns to avoid mismatch
         raw_df = pd.DataFrame(submission_data[1:], columns=submission_data[0])
-        logger.info(f"Retrieved data with columns: {raw_df.columns.tolist()}")
+        # logger.info(f"Retrieved data with columns: {raw_df.columns.tolist()}")
         
         # Format all column names: lowercase and replace spaces/special chars with underscores
         raw_df.columns = [re.sub(r'[^a-zA-Z0-9]', '_', col).lower().replace('__', '_').strip('_') for col in raw_df.columns]
-        logger.info(f"Formatted column names: {raw_df.columns.tolist()}")
+        # logger.info(f"Formatted column names: {raw_df.columns.tolist()}")
         
         # Check if we have expected columns - adjust column selection based on actual data
         required_columns = ['month', 'discord_twitter_name', 'team_name', 'infielder_choices', 
@@ -174,8 +175,6 @@ def extract_player_names(submissions_df):
         rp = submissions_df['relief_pitcher_choices'].astype(str).str.split(',').explode().str.strip().tolist()
         # Combine pitchers
         p_names = sp + rp
-    print(submissions_df['starting_pitcher_choices'])
-    
     # Extract position players if columns exist
     if 'infielder_choices' in submissions_df.columns:
         i = submissions_df['infielder_choices'].astype(str).str.split(',').explode().str.strip().tolist()
@@ -725,55 +724,131 @@ def create_leaderboard(submissions_df, batters_final, pitchers_final):
 
 def update_google_sheets(gc, spreadsheet_id, batters_final, pitchers_final, leaderboard):
     """
-    Update Google Sheets with results
+    Update Google Sheets with results, using separate operations for each worksheet
     """
     logger.info("Updating Google Sheets with results")
+    
+    # Function to open the spreadsheet with retry
+    def open_spreadsheet_with_retry(max_attempts=3):
+        for attempt in range(1, max_attempts + 1):
+            try:
+                sheet = gc.open_by_key(spreadsheet_id)
+                return sheet
+            except Exception as e:
+                logger.warning(f"Failed to open spreadsheet (attempt {attempt}/{max_attempts}): {e}")
+                if attempt == max_attempts:
+                    raise
+                time.sleep(2 ** attempt)
+    
     try:
-        sheet = gc.open_by_key(spreadsheet_id)
-        
         # Update batters worksheet
         try:
+            sheet = open_spreadsheet_with_retry()
             batters_worksheet = sheet.worksheet('batters_by_month')
             batters_worksheet.clear()
-        except:
-            batters_worksheet = sheet.add_worksheet(title='batters_by_month', rows=len(batters_final)+1, cols=len(batters_final.columns))
+            logger.info("Cleared batters worksheet")
+        except Exception as e:
+            sheet = open_spreadsheet_with_retry()
+            logger.info(f"Creating new batters worksheet: {e}")
+            batters_worksheet = sheet.add_worksheet(
+                title='batters_by_month', 
+                rows=len(batters_final)+1, 
+                cols=len(batters_final.columns)
+            )
         
+        # Update batters data with retry
         batters_data = [batters_final.columns.values.tolist()] + batters_final.values.tolist()
-        batters_worksheet.update(batters_data)
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                batters_worksheet.update(batters_data)
+                logger.info("Updated batters worksheet")
+                break
+            except Exception as e:
+                logger.warning(f"Failed to update batters (attempt {attempt}/{max_attempts}): {e}")
+                if attempt == max_attempts:
+                    raise
+                # Get a fresh connection to the worksheet before retrying
+                sheet = open_spreadsheet_with_retry()
+                batters_worksheet = sheet.worksheet('batters_by_month')
+                time.sleep(2 ** attempt)
         
-        # Update pitchers worksheet
+        # Update pitchers worksheet - reopening connection
         try:
+            sheet = open_spreadsheet_with_retry()  # Fresh connection
             pitchers_worksheet = sheet.worksheet('pitchers_by_month')
             pitchers_worksheet.clear()
-        except:
-            pitchers_worksheet = sheet.add_worksheet(title='pitchers_by_month', rows=len(pitchers_final)+1, cols=len(pitchers_final.columns))
+            logger.info("Cleared pitchers worksheet")
+        except Exception as e:
+            sheet = open_spreadsheet_with_retry()
+            logger.info(f"Creating new pitchers worksheet: {e}")
+            pitchers_worksheet = sheet.add_worksheet(
+                title='pitchers_by_month', 
+                rows=len(pitchers_final)+1, 
+                cols=len(pitchers_final.columns)
+            )
         
+        # Update pitchers data with retry
         pitchers_data = [pitchers_final.columns.values.tolist()] + pitchers_final.values.tolist()
-        pitchers_worksheet.update(pitchers_data)
+        for attempt in range(1, max_attempts + 1):
+            try:
+                pitchers_worksheet.update(pitchers_data)
+                logger.info("Updated pitchers worksheet")
+                break
+            except Exception as e:
+                logger.warning(f"Failed to update pitchers (attempt {attempt}/{max_attempts}): {e}")
+                if attempt == max_attempts:
+                    raise
+                # Get a fresh connection to the worksheet before retrying
+                sheet = open_spreadsheet_with_retry()
+                pitchers_worksheet = sheet.worksheet('pitchers_by_month')
+                time.sleep(2 ** attempt)
         
-        # Update leaderboard worksheet
+        # Update leaderboard worksheet - reopening connection
         try:
+            sheet = open_spreadsheet_with_retry()  # Fresh connection
             leaderboard_worksheet = sheet.worksheet('Leaderboard')
             leaderboard_worksheet.clear()
-        except:
-            leaderboard_worksheet = sheet.add_worksheet(title='Leaderboard', rows=len(leaderboard)+1, cols=len(leaderboard.columns)+3)
+            logger.info("Cleared leaderboard worksheet")
+        except Exception as e:
+            sheet = open_spreadsheet_with_retry()
+            logger.info(f"Creating new leaderboard worksheet: {e}")
+            leaderboard_worksheet = sheet.add_worksheet(
+                title='Leaderboard', 
+                rows=len(leaderboard)+1, 
+                cols=len(leaderboard.columns)+3
+            )
         
+        # Update leaderboard data with retry
         leaderboard_data = [leaderboard.columns.values.tolist()] + leaderboard.values.tolist()
-        leaderboard_worksheet.update(leaderboard_data)
-        
-        # Update last updated timestamp
-        eastern = pytz.timezone('America/New_York')
-        eastern_now = datetime.now(eastern)
-        today = eastern_now.date()
-        yesterday = today - timedelta(days=1)
-        leaderboard_worksheet.update_cell(1, 7, yesterday.isoformat())
+        for attempt in range(1, max_attempts + 1):
+            try:
+                leaderboard_worksheet.update(leaderboard_data)
+                logger.info("Updated leaderboard worksheet")
+                
+                # Update timestamp
+                eastern = pytz.timezone('America/New_York')
+                eastern_now = datetime.now(eastern)
+                today = eastern_now.date()
+                yesterday = today - timedelta(days=1)
+                leaderboard_worksheet.update_cell(1, 7, yesterday.isoformat())
+                logger.info("Updated timestamp")
+                break
+            except Exception as e:
+                logger.warning(f"Failed to update leaderboard (attempt {attempt}/{max_attempts}): {e}")
+                if attempt == max_attempts:
+                    raise
+                # Get a fresh connection to the worksheet before retrying
+                sheet = open_spreadsheet_with_retry()
+                leaderboard_worksheet = sheet.worksheet('Leaderboard')
+                time.sleep(2 ** attempt)
         
         logger.info("Google Sheets updated successfully")
         
     except Exception as e:
         logger.error(f"Error updating Google Sheets: {e}")
         raise
-
+    
 def get_game_ids(start_date, end_date):
     """
     Get MLB game IDs for a date range
@@ -846,10 +921,18 @@ def main():
         leaderboard = create_leaderboard(submissions, batters_final, pitchers_final)
         
         # Update Google Sheets
-        update_google_sheets(gc, spreadsheet_id, batters_final, pitchers_final, leaderboard)
-        
-        logger.info("Fantasy baseball update completed successfully")
-        
+        try:
+            update_google_sheets(
+                gc=gc,  # Use your existing gspread client
+                spreadsheet_id=spreadsheet_id,
+                batters_final=batters_final,
+                pitchers_final=pitchers_final,
+                leaderboard=leaderboard
+            )
+            logger.info("Fantasy baseball update completed successfully")
+        except Exception as e:
+            logger.error(f"Error in main function: {e}")
+            
     except Exception as e:
         logger.error(f"Error in main function: {e}")
         sys.exit(1)
