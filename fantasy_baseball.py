@@ -409,6 +409,8 @@ def get_batter_stats(game_ids, hitter_ids):
             # Process away batters
             for i in bx['awayBatters']:
                 if i['personId'] in hitter_ids:
+                    h = int(i['h']) - int(i['doubles'])  - int(i['triples']) - int(i['hr'])
+                    tb = h + (int(i['doubles'])*2) + (int(i['triples'])*3) + (int(i['hr'])*4)
                     df = pd.DataFrame({
                         'date': bx['gameBoxInfo'][-1]['label'],
                         'person_id': i['personId'],
@@ -416,13 +418,15 @@ def get_batter_stats(game_ids, hitter_ids):
                         'r': i['r'],
                         'rbi': i['rbi'],
                         'sb': i['sb'],
-                        'bb': i['bb']
+                        'bb': i['bb'],
+                        'tb': tb
                     }, index=[0])
                     batters = pd.concat([df, batters], ignore_index=True)
             
             # Process home batters
             for i in bx['homeBatters']:
                 if i['personId'] in hitter_ids:
+                    tb = int(i['h']) + (int(i['doubles'])*2) + (int(i['triples'])*3) + (int(i['hr'])*4)
                     df = pd.DataFrame({
                         'date': bx['gameBoxInfo'][-1]['label'],
                         'person_id': i['personId'],
@@ -430,7 +434,8 @@ def get_batter_stats(game_ids, hitter_ids):
                         'r': i['r'],
                         'rbi': i['rbi'],
                         'sb': i['sb'],
-                        'bb': i['bb']
+                        'bb': i['bb'],
+                        'tb': tb
                     }, index=[0])
                     batters = pd.concat([df, batters], ignore_index=True)
         except Exception as e:
@@ -530,6 +535,7 @@ def calculate_player_points(batters_df, pitchers_df):
         batters_df['rbi'] = pd.to_numeric(batters_df['rbi'])
         batters_df['sb'] = pd.to_numeric(batters_df['sb'])
         batters_df['bb'] = pd.to_numeric(batters_df['bb'])
+        batters_df['tb'] = pd.to_numeric(batters_df['tb'])
         
         # Calculate points
         batters_df['hr_points'] = batters_df['hr'] * 5
@@ -537,6 +543,7 @@ def calculate_player_points(batters_df, pitchers_df):
         batters_df['rbi_points'] = batters_df['rbi'] * 1
         batters_df['sb_points'] = batters_df['sb'] * 3
         batters_df['walk_points'] = batters_df['bb'] * 1
+        batters_df['total_bases_points'] = batters_df['tb'] * 1
     
     # Calculate pitcher points
     if not pitchers_df.empty:
@@ -567,8 +574,8 @@ def create_player_summaries(batters_df, pitchers_df, player_info_df):
     
     # Group batters by month and player
     batters_grouped = batters_df.groupby(['month_date', 'person_id'])[
-        ['hr', 'r', 'rbi', 'sb', 'bb', 'hr_points', 'runs_points', 
-         'rbi_points', 'sb_points', 'walk_points']
+        ['hr', 'r', 'rbi', 'sb', 'bb', 'tb','hr_points', 'runs_points', 
+         'rbi_points', 'sb_points', 'walk_points','total_bases_points']
     ].sum().reset_index()
     
     # Calculate total points for batters
@@ -577,7 +584,8 @@ def create_player_summaries(batters_df, pitchers_df, player_info_df):
         batters_grouped['runs_points'] + 
         batters_grouped['rbi_points'] + 
         batters_grouped['sb_points'] + 
-        batters_grouped['walk_points']
+        batters_grouped['walk_points'] +
+        batters_grouped['total_bases_points']
     )
     
     # Group pitchers by month and player
