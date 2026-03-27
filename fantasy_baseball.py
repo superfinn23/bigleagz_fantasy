@@ -910,7 +910,7 @@ def main():
         if today.day == 1:
             month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
         else:
-            month_start = '2025-03-27' if today.month in (3, 4) else today.replace(day=1)
+            month_start = '2026-03-25' if today.month in (3, 4) else today.replace(day=1)
         
         # Get game IDs
         game_ids = get_game_ids(month_start, yesterday)
