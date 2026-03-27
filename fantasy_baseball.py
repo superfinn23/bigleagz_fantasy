@@ -78,7 +78,7 @@ def get_current_month():
     today = eastern_now.date()
     
     if today.month in (3, 4):
-        return 'April 2025'
+        return f'April {date.today().year}'
     elif today.day == 1:
         return (today.replace(day=1) - timedelta(days=1)).strftime("%B %Y")
     else:
