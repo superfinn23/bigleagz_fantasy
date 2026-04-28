@@ -527,7 +527,8 @@ def calculate_player_points(batters_df, pitchers_df):
     if not batters_df.empty:
         batters_df['month_date'] = pd.to_datetime(batters_df['date']).dt.strftime('%Y-%b')
         # Fix for stats from March counting for April
-        batters_df.loc[batters_df['month_date'] == '2025-Mar', 'month_date'] = '2025-Apr'
+        current_year = datetime.now().year
+        batters_df.loc[batters_df['month_date'] == f'{current_year}-Mar', 'month_date'] = f'{current_year}-Apr'
         
         # Convert columns to numeric
         batters_df['hr'] = pd.to_numeric(batters_df['hr'])
@@ -549,7 +550,8 @@ def calculate_player_points(batters_df, pitchers_df):
     if not pitchers_df.empty:
         pitchers_df['month_date'] = pd.to_datetime(pitchers_df['date']).dt.strftime('%Y-%b')
         # Fix for stats from March counting for April
-        pitchers_df.loc[pitchers_df['month_date'] == '2025-Mar', 'month_date'] = '2025-Apr'
+        current_year = datetime.now().year
+        pitchers_df.loc[pitchers_df['month_date'] == f'{current_year}-Mar', 'month_date'] = f'{current_year}-Apr'
         
         # Convert columns to numeric
         pitchers_df['ip'] = pitchers_df['ip'].astype(float)
