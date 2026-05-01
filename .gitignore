@@ -52,3 +52,6 @@ logs/
 credentials.json
 service_account.json
 token.json
+
+# Claude Code
+.claude/
