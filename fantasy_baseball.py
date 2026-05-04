@@ -914,7 +914,7 @@ def main():
         elif today.day == 1:
             month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
         else:
-            today.replace(day=1)
+            month_start = today.replace(day=1)
         
         # Get game IDs
         game_ids = get_game_ids(month_start, yesterday)
