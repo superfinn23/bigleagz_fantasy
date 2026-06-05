@@ -911,6 +911,8 @@ def main():
         current_month = get_current_month()
         if today.month in (3, 4) or (today.month == 5 and today.day == 1):
             month_start = '2026-03-25'
+        elif today.month == 6 and today.year == 2026:
+            month_start = '2026-06-05'
         elif today.day == 1:
             month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
         else:
